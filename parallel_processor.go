@@ -244,28 +244,28 @@ func (p *ParallelProcessor[T]) startRouter() {
 	}
 }
 
-func (p *ParallelProcessor[T]) handleRetries(pe *failedSubmission[T]) {
-	if pe.submission.try == p.options.maxRetries {
-		log.Debugf("Item reached MaxRetries, skipping: %v", *pe.submission.item)
+func (p *ParallelProcessor[T]) handleRetries(fs *failedSubmission[T]) {
+	if fs.submission.try == p.options.maxRetries {
+		log.Debugf("Item reached MaxRetries, skipping: %v", *fs.submission.item)
 		if p.options.discardFailures {
-			p.submissionsToBeFinalizedCh <- pe.submission
+			p.submissionsToBeFinalizedCh <- fs.submission
 			return
 		}
 
-		p.submissionsFailedCh <- pe
+		p.submissionsFailedCh <- fs
 		return
 	}
 
-	newTime := pe.submission.startTime
+	newTime := fs.submission.startTime
 	if p.options.retryStrategy != nil {
-		newTime = p.options.retryStrategy.calculateStartTime(pe.submission.submissionMetadata)
+		newTime = p.options.retryStrategy.calculateStartTime(fs.submission.submissionMetadata)
 	}
 
-	log.Debugf("Error detected %v and will retry in %v", *pe.submission.item, newTime.Sub(pe.submission.startTime))
-	pe.submission.startTime = newTime
-	pe.submission.try++
+	log.Debugf("Error detected %v and will retry in %v", *fs.submission.item, newTime.Sub(fs.submission.startTime))
+	fs.submission.startTime = newTime
+	fs.submission.try++
 
-	p.submissionsToBeProcessedCh <- pe.submission
+	p.submissionsToBeProcessedCh <- fs.submission
 }
 
 func (p *ParallelProcessor[T]) handleSubmissionFinalization(completedSubmission *submission[T]) {
